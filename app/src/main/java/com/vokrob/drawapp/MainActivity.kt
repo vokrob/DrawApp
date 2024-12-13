@@ -1,20 +1,27 @@
 package com.vokrob.drawapp
 
+import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.vokrob.drawapp.ui.theme.DrawAppTheme
 
 class MainActivity : ComponentActivity() {
@@ -23,24 +30,45 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
 
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            hide(WindowInsetsCompat.Type.statusBars())
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            window.attributes.layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
+
         setContent {
+            val pathData = remember { mutableStateOf(PathData()) }
+
             DrawAppTheme {
-                DrawCanvas()
+                Column {
+                    DrawCanvas(pathData)
+                    BottomPanel { color ->
+                        pathData.value = pathData.value.copy(color = color)
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-fun DrawCanvas() {
-    val tempPath = Path()
-    val path = remember { mutableStateOf(Path()) }
+fun DrawCanvas(pathData: MutableState<PathData>) {
+    var tempPath = Path()
+    val pathList = remember { mutableStateListOf(PathData()) }
 
     Canvas(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
+            .fillMaxHeight(0.75f)
             .pointerInput(true) {
-                detectDragGestures { change, dragAmount ->
+                detectDragGestures(
+                    onDragStart = { tempPath = Path() },
+                    onDragEnd = { pathList.add(pathData.value.copy(path = tempPath)) }
+                ) { change, dragAmount ->
                     tempPath.moveTo(
                         change.position.x - dragAmount.x,
                         change.position.y - dragAmount.y
@@ -49,15 +77,20 @@ fun DrawCanvas() {
                         change.position.x,
                         change.position.y
                     )
-                    path.value = Path().apply { addPath(tempPath) }
+                    if (pathList.size > 0) {
+                        pathList.removeAt(pathList.size - 1)
+                    }
+                    pathList.add(pathData.value.copy(path = tempPath))
                 }
             }
     ) {
-        drawPath(
-            path.value,
-            color = Color.Red,
-            style = Stroke(5f)
-        )
+        pathList.forEach { pathData ->
+            drawPath(
+                pathData.path,
+                color = pathData.color,
+                style = Stroke(5f)
+            )
+        }
     }
 }
 
