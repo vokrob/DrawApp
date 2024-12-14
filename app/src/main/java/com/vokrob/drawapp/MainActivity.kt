@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.core.view.WindowInsetsCompat
@@ -46,8 +47,12 @@ class MainActivity : ComponentActivity() {
             DrawAppTheme {
                 Column {
                     DrawCanvas(pathData)
-                    BottomPanel { color ->
-                        pathData.value = pathData.value.copy(color = color)
+                    BottomPanel(
+                        { color ->
+                            pathData.value = pathData.value.copy(color = color)
+                        }
+                    ) { lineWidth ->
+                        pathData.value = pathData.value.copy(lineWidth = lineWidth)
                     }
                 }
             }
@@ -77,6 +82,7 @@ fun DrawCanvas(pathData: MutableState<PathData>) {
                         change.position.x,
                         change.position.y
                     )
+
                     if (pathList.size > 0) {
                         pathList.removeAt(pathList.size - 1)
                     }
@@ -88,7 +94,10 @@ fun DrawCanvas(pathData: MutableState<PathData>) {
             drawPath(
                 pathData.path,
                 color = pathData.color,
-                style = Stroke(5f)
+                style = Stroke(
+                    pathData.lineWidth,
+                    cap = StrokeCap.Round
+                )
             )
         }
     }
